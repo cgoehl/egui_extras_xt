@@ -17,14 +17,11 @@ pub struct EncoderKnobPage {
     diameter: f32,
     drag_length: f32,
     winding: Winding,
-    orientation: Orientation,
-    range: RangeInclusive<f32>,
-    spread: f32,
     thickness: f32,
     shape: WidgetShape,
     animated: bool,
-    snap: Option<f32>,
-    shift_snap: Option<f32>,
+    show_axes: bool,
+		axis_count: usize,
 }
 
 impl Default for EncoderKnobPage {
@@ -34,15 +31,12 @@ impl Default for EncoderKnobPage {
             interactive: true,
             diameter: 32.0,
             drag_length: 1.0,
-            orientation: Orientation::Top,
             winding: Winding::Clockwise,
-            range: 0.0..=1.0,
-            spread: 1.0,
             thickness: 0.66,
-            shape: WidgetShape::Squircle(4.0),
+            shape: WidgetShape::Circle,
             animated: true,
-            snap: None,
-            shift_snap: None,
+						show_axes: true,
+						axis_count: 10,
         }
     }
 }
@@ -54,15 +48,13 @@ impl PageImpl for EncoderKnobPage {
                 .interactive(self.interactive)
                 .diameter(self.diameter)
                 .drag_length(self.drag_length)
-                .orientation(self.orientation)
                 .winding(self.winding)
-                .range(self.range.clone())
-                .spread(self.spread)
                 .thickness(self.thickness)
                 .shape(self.shape.clone())
                 .animated(self.animated)
-                .snap(self.snap)
-                .shift_snap(self.shift_snap),
+								.show_axes(self.show_axes)
+								.axis_count(self.axis_count)
+                
         );
         ui.separator();
 
@@ -93,18 +85,6 @@ impl PageImpl for EncoderKnobPage {
                 });
                 ui.end_row();
 
-                ui.label("Orientation");
-                widget_orientation_ui(ui, &mut self.orientation);
-                ui.end_row();
-
-                ui.label("Range");
-                ui.drag_rangeinclusive(&mut self.range);
-                ui.end_row();
-
-                ui.label("Spread");
-                ui.add(DragValue::new(&mut self.spread));
-                ui.end_row();
-
                 ui.label("Thickness");
                 ui.add(DragValue::new(&mut self.thickness));
                 ui.end_row();
@@ -117,14 +97,12 @@ impl PageImpl for EncoderKnobPage {
                 ui.checkbox(&mut self.animated, "");
                 ui.end_row();
 
-                ui.label("Snap");
-                ui.optional_value_widget(&mut self.snap, |ui, value| ui.add(DragValue::new(value)));
+								ui.label("Show axes");
+                ui.checkbox(&mut self.show_axes, "");
                 ui.end_row();
 
-                ui.label("Shift snap");
-                ui.optional_value_widget(&mut self.shift_snap, |ui, value| {
-                    ui.add(DragValue::new(value))
-                });
+                ui.label("Axis count");
+                ui.add(DragValue::new(&mut self.axis_count));
                 ui.end_row();
             });
     }

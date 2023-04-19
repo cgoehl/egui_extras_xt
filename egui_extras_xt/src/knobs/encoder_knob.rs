@@ -1,8 +1,9 @@
 use std::f32::consts::TAU;
 use std::ops::RangeInclusive;
 
-use egui::{self, Response, Sense, Ui, Widget};
-use emath::{remap_clamp, Vec2};
+use ecolor::Color32;
+use egui::{self, Response, Sense, Ui, Widget, Shape};
+use emath::{remap_clamp, Vec2, Rot2};
 
 use crate::common::{Orientation, WidgetShape, Winding};
 
@@ -29,14 +30,11 @@ pub struct EncoderKnob<'a> {
     diameter: f32,
     drag_length: f32,
     winding: Winding,
-    orientation: Orientation,
-    range: RangeInclusive<f32>,
-    spread: f32,
     thickness: f32,
     shape: WidgetShape,
     animated: bool,
-    snap: Option<f32>,
-    shift_snap: Option<f32>,
+		show_axes: bool,
+    axis_count: usize,
 }
 
 impl<'a> EncoderKnob<'a> {
@@ -55,15 +53,12 @@ impl<'a> EncoderKnob<'a> {
             interactive: true,
             diameter: 32.0,
             drag_length: 1.0,
-            orientation: Orientation::Top,
             winding: Winding::Clockwise,
-            range: 0.0..=1.0,
-            spread: 1.0,
             thickness: 0.66,
-            shape: WidgetShape::Squircle(4.0),
+            shape: WidgetShape::Circle,
             animated: true,
-            snap: None,
-            shift_snap: None,
+						show_axes: true,
+						axis_count: 10,
         }
     }
 
@@ -87,21 +82,6 @@ impl<'a> EncoderKnob<'a> {
         self
     }
 
-    pub fn orientation(mut self, orientation: Orientation) -> Self {
-        self.orientation = orientation;
-        self
-    }
-
-    pub fn range(mut self, range: RangeInclusive<f32>) -> Self {
-        self.range = range;
-        self
-    }
-
-    pub fn spread(mut self, spread: impl Into<f32>) -> Self {
-        self.spread = spread.into();
-        self
-    }
-
     pub fn thickness(mut self, thickness: impl Into<f32>) -> Self {
         self.thickness = thickness.into();
         self
@@ -117,20 +97,21 @@ impl<'a> EncoderKnob<'a> {
         self
     }
 
-    pub fn snap(mut self, snap: Option<f32>) -> Self {
-        self.snap = snap;
-        self
-    }
+    pub fn show_axes(mut self, show_axes: bool) -> Self {
+				self.show_axes = show_axes;
+				self
+		}
 
-    pub fn shift_snap(mut self, shift_snap: Option<f32>) -> Self {
-        self.shift_snap = shift_snap;
-        self
-    }
+		pub fn axis_count(mut self, axis_count: usize) -> Self {
+				self.axis_count = axis_count;
+				self
+		}
 }
 
 impl<'a> Widget for EncoderKnob<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let desired_size = Vec2::splat(self.diameter);
+				let rotation_matrix = Rot2::default();
 
         let (rect, mut response) = ui.allocate_exact_size(
             desired_size,
@@ -141,17 +122,15 @@ impl<'a> Widget for EncoderKnob<'a> {
             },
         );
 
-        let constrain_value = |value: f32| value.clamp(*self.range.start(), *self.range.end());
-
         if response.dragged() {
-            let drag_delta = self.orientation.rot2().inverse() * response.drag_delta();
+            let drag_delta = rotation_matrix.inverse() * response.drag_delta();
 
             let mut new_value = get(&mut self.get_set_value);
 
             let delta = drag_delta.x + drag_delta.y * self.winding.to_float();
-            new_value += delta * (self.range.end() - self.range.start()) / (self.diameter * self.drag_length);
+            new_value += delta * (self.diameter * self.drag_length);
 
-            set(&mut self.get_set_value, constrain_value(new_value));
+            set(&mut self.get_set_value, new_value);
             response.mark_changed();
         }
 
@@ -163,20 +142,6 @@ impl<'a> Widget for EncoderKnob<'a> {
                     get(&mut self.get_set_value),
                     ui.style().animation_time,
                 );
-            }
-
-            if let Some(snap_angle) = if ui.input(|input| input.modifiers.shift_only()) {
-                self.shift_snap
-            } else {
-                self.snap
-            } {
-                assert!(
-                    snap_angle > 0.0,
-                    "non-positive snap angles are not supported"
-                );
-                let new_value = (get(&mut self.get_set_value) / snap_angle).round() * snap_angle;
-                set(&mut self.get_set_value, constrain_value(new_value));
-                response.mark_changed();
             }
         }
 
@@ -190,40 +155,50 @@ impl<'a> Widget for EncoderKnob<'a> {
                 get(&mut self.get_set_value)
             };
 
-            let center_angle = (self.orientation.rot2() * Vec2::RIGHT).angle();
-            let spread_angle = (TAU / 2.0) * self.spread.clamp(0.0, 1.0);
-
-            let (min_angle, max_angle) = (
-                center_angle - spread_angle * self.winding.to_float(),
-                center_angle + spread_angle * self.winding.to_float(),
-            );
+            let center_angle = (rotation_matrix * Vec2::RIGHT).angle();
 
             let outer_radius = self.diameter / 2.0;
             let inner_radius = outer_radius * (1.0 - self.thickness.clamp(0.0, 1.0));
 
-            self.shape.paint_arc(
-                ui,
-                rect.center(),
-                inner_radius,
-                outer_radius,
-                min_angle,
-                max_angle,
-                ui.style().visuals.faint_bg_color,
-                ui.style().visuals.window_stroke(),
-                self.orientation.rot2(),
-            );
+            
+						ui.painter().circle(
+								rect.center(),
+								self.diameter / 3.0,
+								visuals.text_color(), // TODO: Semantically correct color
+								visuals.fg_stroke,    // TODO: Semantically correct color
+						);
 
-            self.shape.paint_arc(
-                ui,
-                rect.center(),
-                (inner_radius - visuals.expansion).max(0.0),
-                outer_radius + visuals.expansion,
-                remap_clamp(0.0, self.range.clone(), min_angle..=max_angle),
-                remap_clamp(value, self.range, min_angle..=max_angle),
-                visuals.bg_fill,
-                visuals.fg_stroke,
-                self.orientation.rot2(),
-            );
+						let angle_to_shape_outline = |angle: f32| {
+							rotation_matrix
+									* Vec2::angled(angle * self.winding.to_float())
+									* (self.shape.eval(angle * self.winding.to_float()) * self.diameter / 2.0)
+						};
+
+						{
+							let paint_axis = |axis_angle| {
+									ui.painter().add(Shape::line(
+											vec![
+													rect.center(),
+													rect.center() + angle_to_shape_outline(axis_angle),
+											],
+											visuals.fg_stroke
+									));
+							};
+
+							if self.show_axes {
+								for axis in 0..self.axis_count {
+										paint_axis((axis as f32 * (TAU / (self.axis_count as f32)) + get(&mut self.get_set_value)));
+								}
+							}
+						}
+
+						ui.painter().circle(
+							rect.center(),
+							self.diameter / 2.0,
+							Color32::TRANSPARENT, // TODO: Semantically correct color
+							visuals.fg_stroke,    // TODO: Semantically correct color
+					);
+					
         }
 
         response
