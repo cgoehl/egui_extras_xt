@@ -30,7 +30,7 @@ impl Default for EncoderKnobPage {
             value: 0.0,
             interactive: true,
             diameter: 32.0,
-            drag_length: 1.0,
+            drag_length: 0.008,
             winding: Winding::Clockwise,
             thickness: 0.66,
             shape: WidgetShape::Circle,
@@ -76,7 +76,7 @@ impl PageImpl for EncoderKnobPage {
                 ui.end_row();
 
                 ui.label("Drag length");
-                ui.add(DragValue::new(&mut self.drag_length));
+                ui.add(DragValue::new(&mut self.drag_length).min_decimals(1).speed(0.001));
                 ui.end_row();
 
                 ui.label("Winding");

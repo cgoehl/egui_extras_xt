@@ -52,7 +52,7 @@ impl<'a> EncoderKnob<'a> {
             get_set_value: Box::new(get_set_value),
             interactive: true,
             diameter: 32.0,
-            drag_length: 1.0,
+            drag_length: 0.008,
             winding: Winding::Clockwise,
             thickness: 0.66,
             shape: WidgetShape::Circle,
@@ -128,7 +128,7 @@ impl<'a> Widget for EncoderKnob<'a> {
             let mut new_value = get(&mut self.get_set_value);
 
             let delta = drag_delta.x + drag_delta.y * self.winding.to_float();
-            new_value += delta * (self.diameter * self.drag_length);
+            new_value -= delta * self.drag_length;
 
             set(&mut self.get_set_value, new_value);
             response.mark_changed();
