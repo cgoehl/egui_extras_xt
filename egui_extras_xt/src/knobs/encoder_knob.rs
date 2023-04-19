@@ -33,7 +33,7 @@ pub struct EncoderKnob<'a> {
     thickness: f32,
     shape: WidgetShape,
     animated: bool,
-		show_axes: bool,
+    show_axes: bool,
     axis_count: usize,
 }
 
@@ -57,8 +57,8 @@ impl<'a> EncoderKnob<'a> {
             thickness: 0.66,
             shape: WidgetShape::Circle,
             animated: true,
-						show_axes: true,
-						axis_count: 10,
+            show_axes: true,
+            axis_count: 10,
         }
     }
 
@@ -98,20 +98,20 @@ impl<'a> EncoderKnob<'a> {
     }
 
     pub fn show_axes(mut self, show_axes: bool) -> Self {
-				self.show_axes = show_axes;
-				self
-		}
+        self.show_axes = show_axes;
+        self
+    }
 
-		pub fn axis_count(mut self, axis_count: usize) -> Self {
-				self.axis_count = axis_count;
-				self
-		}
+    pub fn axis_count(mut self, axis_count: usize) -> Self {
+        self.axis_count = axis_count;
+        self
+    }
 }
 
 impl<'a> Widget for EncoderKnob<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let desired_size = Vec2::splat(self.diameter);
-				let rotation_matrix = Rot2::default();
+        let rotation_matrix = Rot2::default();
 
         let (rect, mut response) = ui.allocate_exact_size(
             desired_size,
@@ -155,50 +155,44 @@ impl<'a> Widget for EncoderKnob<'a> {
                 get(&mut self.get_set_value)
             };
 
-            let center_angle = (rotation_matrix * Vec2::RIGHT).angle();
+            ui.painter().circle(
+                rect.center(),
+                self.diameter / 3.0,
+                visuals.text_color(), // TODO: Semantically correct color
+                visuals.fg_stroke,    // TODO: Semantically correct color
+            );
 
-            let outer_radius = self.diameter / 2.0;
-            let inner_radius = outer_radius * (1.0 - self.thickness.clamp(0.0, 1.0));
+            {
+                let angle_to_shape_outline = |angle: f32| {
+                  rotation_matrix
+                      * Vec2::angled(angle * self.winding.to_float())
+                      * (self.shape.eval(angle * self.winding.to_float()) * self.diameter / 2.0)
+                };
 
-            
-						ui.painter().circle(
-								rect.center(),
-								self.diameter / 3.0,
-								visuals.text_color(), // TODO: Semantically correct color
-								visuals.fg_stroke,    // TODO: Semantically correct color
-						);
+                let paint_axis = |axis_angle| {
+                    ui.painter().add(Shape::line(
+                        vec![
+                            rect.center(),
+                            rect.center() + angle_to_shape_outline(axis_angle),
+                        ],
+                        visuals.fg_stroke
+                    ));
+                };
 
-						let angle_to_shape_outline = |angle: f32| {
-							rotation_matrix
-									* Vec2::angled(angle * self.winding.to_float())
-									* (self.shape.eval(angle * self.winding.to_float()) * self.diameter / 2.0)
-						};
+                if self.show_axes {
+                    for axis in 0..self.axis_count {
+                        paint_axis((axis as f32 * (TAU / (self.axis_count as f32)) + value));
+                    }
+                }
+            }
 
-						{
-							let paint_axis = |axis_angle| {
-									ui.painter().add(Shape::line(
-											vec![
-													rect.center(),
-													rect.center() + angle_to_shape_outline(axis_angle),
-											],
-											visuals.fg_stroke
-									));
-							};
-
-							if self.show_axes {
-								for axis in 0..self.axis_count {
-										paint_axis((axis as f32 * (TAU / (self.axis_count as f32)) + get(&mut self.get_set_value)));
-								}
-							}
-						}
-
-						ui.painter().circle(
-							rect.center(),
-							self.diameter / 2.0,
-							Color32::TRANSPARENT, // TODO: Semantically correct color
-							visuals.fg_stroke,    // TODO: Semantically correct color
-					);
-					
+            ui.painter().circle(
+              rect.center(),
+              self.diameter / 2.0,
+              Color32::TRANSPARENT, // TODO: Semantically correct color
+              visuals.fg_stroke,    // TODO: Semantically correct color
+          );
+          
         }
 
         response
