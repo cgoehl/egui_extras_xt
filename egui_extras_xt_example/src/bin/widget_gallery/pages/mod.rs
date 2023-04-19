@@ -20,6 +20,9 @@ use datamatrix_page::DataMatrixPage;
 mod directory_tree_view_page;
 use directory_tree_view_page::DirectoryTreeViewPage;
 
+mod encoder_knob_page;
+use encoder_knob_page::EncoderKnobPage;
+
 mod hyperlink_with_icon_page;
 use hyperlink_with_icon_page::HyperlinkWithIconPage;
 
@@ -69,6 +72,10 @@ pub enum PageId {
     #[strum(to_string = "AudioKnob")]
     #[strum(props(feature = "knobs"))]
     AudioKnobPage,
+
+		#[strum(to_string = "EncoderKnob")]
+    #[strum(props(feature = "knobs"))]
+    EncoderKnobPage,
 
     #[strum(to_string = "BarcodeWidget")]
     #[strum(props(feature = "barcodes"))]
@@ -131,6 +138,7 @@ impl PageId {
         match *self {
             PageId::AngleKnobPage => Box::<AngleKnobPage>::default(),
             PageId::AudioKnobPage => Box::<AudioKnobPage>::default(),
+            PageId::EncoderKnobPage => Box::<EncoderKnobPage>::default(),
             PageId::BarcodePage => Box::<BarcodePage>::default(),
             PageId::DataMatrixPage => Box::<DataMatrixPage>::default(),
             PageId::DirectoryTreeViewPage => Box::<DirectoryTreeViewPage>::default(),
