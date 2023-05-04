@@ -1,0 +1,1 @@
+Prototype for EncoderKnob. See [https://github.com/xTibor/egui_extras_xt/issues/17](https://github.com/xTibor/egui_extras_xt/issues/17)
